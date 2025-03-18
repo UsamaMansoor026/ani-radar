@@ -1,0 +1,33 @@
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap");
+
+@import "tailwindcss";
+
+@theme {
+  --font-orbitron: "Orbitron", sans-serif;
+
+  --color-midnight-blue: #0f0f1b;
+  --color-cyan-blue: #00ffff;
+  --color-neon-pink: #ff007f;
+  --color-warm-orange: #ffa500;
+
+  --breakpoint-sm: 2px;
+  --breakpoint-md: 580px;
+}
+
+* {
+  font-family: var(--font-orbitron);
+}
+
+body {
+  background-color: var(--color-midnight-blue);
+}
+
+.anime-cover {
+  box-shadow: -4px 4px 10px 0px var(--color-warm-orange);
+}
+
+@media (max-width: 800px) {
+  .main-container {
+    max-width: 95%;
+  }
+}
