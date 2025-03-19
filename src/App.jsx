@@ -4,7 +4,7 @@ import AnimeFinder from "./components/AnimeFinder";
 
 const App = () => {
   return (
-    <div className="text-cyan-blue bg-midnight-blue relative">
+    <div className="text-cyan-blue bg-midnight-blue">
       <Background />
       <AnimeFinder />
     </div>
