@@ -213,6 +213,8 @@ const AnimeFinder = () => {
                   {item.attributes.synopsis}
                 </p>
               </div>
+
+              <hr className="mt-5 max-w-[80%] mx-auto border-dashed " />
             </div>
           ))}
 
