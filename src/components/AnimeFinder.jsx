@@ -3,7 +3,7 @@ import React, { useState } from "react";
 const AnimeFinder = () => {
   const URL = import.meta.env.VITE_ANIME_API;
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResponse, setSearchResponse] = useState(null);
+  const [searchResponse, setSearchResponse] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -11,35 +11,96 @@ const AnimeFinder = () => {
     setSearchQuery(e.target.value);
   };
 
-  const handleSearch = async () => {
-    // console.log("URL: ", URL + searchQuery);
-    if (searchQuery === "") {
+  /* const handleSearch = async () => {
+    if (searchQuery.trim() === "") {
       setSearchResponse(null);
       setError("Search box is empty");
       return;
     }
+
     setSearchResponse(null);
     setError(null);
     setLoading(true);
-    await fetch(`${URL + searchQuery}`)
-      .then((res) => res.json())
-      .then((data) => {
-        // console.log(data.data[0]);
-        const bestMatch = data.data.find(
-          (anime) =>
-            anime.title_english.toLowerCase() === searchQuery.toLowerCase()
-        );
-        if (bestMatch) {
-          setSearchResponse(bestMatch);
-          setError(null);
-        } else {
-          setSearchResponse(null);
-          setError("Oops... No anime Found!");
-        }
-        setSearchQuery("");
+
+    try {
+      const response = await fetch(`${URL + searchQuery}`);
+      const data = await response.json();
+
+      if (!data?.data) {
+        setError("Anime not found");
         setLoading(false);
-      })
-      .catch((err) => console.log(err));
+        return;
+      }
+
+      console.log("Data.data: ", data.data);
+      setSearchResponse(data.data);
+    } catch (error) {
+      console.error("Error fetching anime:", error);
+      setError("Failed to fetch anime data.");
+    } finally {
+      setSearchQuery("");
+      setLoading(false);
+    }
+  }; */
+
+  const handleSearch = async () => {
+    if (searchQuery.trim() === "") {
+      setSearchResponse(null);
+      setError("Search box is empty");
+      return;
+    }
+
+    setSearchResponse(null);
+    setError(null);
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${URL + searchQuery}`);
+      const data = await response.json();
+
+      if (!data?.data || data.data.length === 0) {
+        setError("Anime not found");
+        setLoading(false);
+        return;
+      }
+
+      // Fetch genres for each anime in parallel
+      const updatedAnimeList = await Promise.all(
+        data.data.map(async (anime) => {
+          let genresList = [];
+
+          if (anime?.relationships?.genres?.links?.related) {
+            try {
+              const genresResponse = await fetch(
+                anime.relationships.genres.links.related
+              );
+              const genresData = await genresResponse.json();
+
+              // Extract only the genre names
+              genresList =
+                genresData?.data?.map((genre) => genre.attributes.name) || [];
+            } catch (err) {
+              console.error(
+                `Error fetching genres for ${anime.attributes?.canonicalTitle}:`,
+                err
+              );
+            }
+          }
+
+          // Return the anime data with extracted genre names
+          return { ...anime, genres: genresList };
+        })
+      );
+
+      console.log("Updated: ", updatedAnimeList);
+      setSearchResponse(updatedAnimeList);
+    } catch (error) {
+      console.error("Error fetching anime:", error);
+      setError("Failed to fetch anime data.");
+    } finally {
+      setSearchQuery("");
+      setLoading(false);
+    }
   };
 
   return (
@@ -86,7 +147,76 @@ const AnimeFinder = () => {
           <p className="mt-6 text-center text-red-700">{error}</p>
         )}
 
-        {searchResponse !== null && (
+        {searchResponse?.length > 0 &&
+          searchResponse.map((item) => (
+            <div key={item.id}>
+              <div className="my-6 flex flex-col md:flex-row items-start gap-5">
+                <img
+                  src={item?.attributes?.posterImage?.large}
+                  alt={searchQuery}
+                  className="w-full md:w-[200px] aspect-[1/1] md:aspect-[3/4] object-cover anime-cover"
+                />
+
+                <div className="text-white w-full">
+                  <h2 className="text-2xl font-bold text-cyan-blue">
+                    {item.attributes.titles.en}
+                  </h2>
+                  <h3 className="text-cyan-blue text-lg">
+                    {item.attributes.titles.ja_jp}
+                  </h3>
+
+                  <p className="mt-2">
+                    <span className="font-semibold">Year:</span>{" "}
+                    {item.attributes.startDate.split("-")[0]}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Status:</span>{" "}
+                    {item.attributes.status}
+                  </p>
+
+                  <p>
+                    <span className="font-semibold">Episodes:</span>{" "}
+                    {item.attributes.episodeCount || "N/A"}
+                  </p>
+
+                  <div className="mt-2 flex items-center gap-4">
+                    <h3 className="font-semibold">Genres:</h3>
+                    <ul className="flex flex-wrap gap-2 mt-1">
+                      {item.genres?.map((genre, index) => (
+                        <li
+                          key={index}
+                          className="bg-warm-orange text-white text-xs px-3 py-1 rounded-full"
+                        >
+                          {genre}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <p className="mt-2">
+                      <span className="font-semibold">Rating:</span>{" "}
+                      {(item.attributes.averageRating / 20).toFixed(1) || "N/A"}{" "}
+                      ⭐
+                    </p>
+                    <p>
+                      <span className="font-semibold">Popularity:</span>{" "}
+                      {item.attributes.popularityRank || "N/A"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-3">
+                <h3 className="font-semibold">Synopsis:</h3>
+                <p className="text-sm text-gray-300 line-clamp-4">
+                  {item.attributes.synopsis}
+                </p>
+              </div>
+            </div>
+          ))}
+
+        {/* {searchResponse !== null && (
           <>
             <div className="my-6 flex flex-col md:flex-row items-start gap-5">
               <img
@@ -96,7 +226,7 @@ const AnimeFinder = () => {
               />
 
               <div className="text-white w-full">
-                {/* Title & Japanese Name */}
+                
                 <h2 className="text-2xl font-bold text-cyan-blue">
                   {searchResponse?.title_english}
                 </h2>
@@ -104,7 +234,7 @@ const AnimeFinder = () => {
                   {searchResponse?.title_japanese}
                 </h3>
 
-                {/* Key Details */}
+                
                 <p className="mt-2">
                   <span className="font-semibold">Year:</span>{" "}
                   {searchResponse?.year}
@@ -118,7 +248,7 @@ const AnimeFinder = () => {
                   {searchResponse?.episodes || "N/A"}
                 </p>
 
-                {/* Genres */}
+                
                 <div className="mt-2 flex items-center gap-4">
                   <h3 className="font-semibold">Genres:</h3>
                   <ul className="flex flex-wrap gap-2 mt-1">
@@ -133,7 +263,7 @@ const AnimeFinder = () => {
                   </ul>
                 </div>
 
-                {/* Rating & Popularity */}
+                
                 <div className="flex items-center justify-between">
                   <p className="mt-2">
                     <span className="font-semibold">Rating:</span>{" "}
@@ -147,7 +277,7 @@ const AnimeFinder = () => {
               </div>
             </div>
 
-            {/* Synopsis */}
+           
             <div className="mt-3">
               <h3 className="font-semibold">Synopsis:</h3>
               <p className="text-sm text-gray-300 line-clamp-4">
@@ -155,7 +285,7 @@ const AnimeFinder = () => {
               </p>
             </div>
           </>
-        )}
+        )} */}
       </div>
     </div>
   );
